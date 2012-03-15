@@ -1,0 +1,15 @@
+board <- {
+   mappernum = 2,
+   cpu_romsize = 2 * mega, cpu_banksize = 0x4000,
+   ppu_romsize = 0, ppu_banksize = 0x2000,
+   ppu_ramfind = false, vram_mirrorfind = true
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+   for(local i = 0; i < pagesize - 1; i += 1){
+      cpu_write(d, 0x8000, i);
+      cpu_read(d, 0x8000, banksize);
+   }
+   cpu_read(d, 0xc000, banksize);
+}
