@@ -1,0 +1,30 @@
+/*
+Written based on
+http://tuxnes.sourceforge.net/mappers-0.80.txt
+*/
+
+board <- {
+  mappernum = 0,
+  cpu_rom = {
+    size_base = 0x10000, size_max = 2 * mega, banksize = 0x8000
+  },
+  ppu_rom = {
+    size_base = 0x4000, size_max = 0x8000, banksize = 0x2000
+  },
+  ppu_ramfind = false, vram_mirrorfind = true
+};
+
+function cpu_dump(d, pagesize, banksize) {
+  for (local i = 0; i < pagesize; i += 1) {
+    cpu_write(d, 0x8000, i << 4);
+    cpu_read(d, 0x8000, 0x4000);
+    cpu_read(d, 0xc000, 0x4000);
+  }
+}
+
+function ppu_dump(d, pagesize, banksize) {
+  for (local i = 0; i < pagesize; i += 1) {
+    cpu_write(d, 0x8000, i);
+    ppu_read(d, 0, 0x2000);
+  }
+}
