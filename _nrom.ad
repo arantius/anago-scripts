@@ -1,15 +1,28 @@
+/*
+Related links:
+- http://ponrevival.blogspot.com/2010/11/anagogui-test-2.html
+
+Pick 1x (or Auto) for 16k PRG carts.  Select 2x for 32k PRG carts.
+*/
+
 board <- {
-mappernum = 0,
-cpu_romsize = 0x8000, cpu_banksize = 0x4000,
-ppu_romsize = 0x2000, ppu_banksize = 0x2000,
-ppu_ramfind = false, vram_mirrorfind = true
+  mappernum = 0,
+  cpu_rom = {
+    size_base = 0x4000, size_max = 0x8000, banksize = 0x4000
+  },
+  ppu_rom = {
+    size_base = 0x2000, size_max = 0x2000, banksize = 0x2000
+  },
+  ppu_ramfind = false, vram_mirrorfind = true
 };
-function cpu_dump (d, pagesize, banksize)
-{
-cpu_read (d, 0x8000, 0x4000);
-cpu_read (d, 0xc000, 0x4000);
+
+function cpu_dump(d, pagesize, banksize) {
+  if (pagesize == 2) {
+    cpu_read(d, 0x8000, banksize);
+  }
+  cpu_read(d, 0xc000, banksize);
 }
-function ppu_dump (d, pagesize, banksize)
-{
-ppu_read (d, 0, banksize);
+
+function ppu_dump(d, pagesize, banksize) {
+  ppu_read(d, 0, banksize);
 }
