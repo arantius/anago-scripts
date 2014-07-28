@@ -4,7 +4,7 @@ http://tuxnes.sourceforge.net/mappers-0.80.txt
 */
 
 board <- {
-  mappernum = 0,
+  mappernum = 66,
   cpu_rom = {
     size_base = 0x10000, size_max = 2 * mega, banksize = 0x8000
   },
