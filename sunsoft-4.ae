@@ -1,0 +1,63 @@
+board <- {
+	mappernum = 68, ppu_ramfind = false, vram_mirrorfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x4000
+	},
+	cpu_ram = {
+		size_base = 0x2000, size_max = 0x2000, banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x0800
+	}
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize - 1; i += 1){
+		cpu_write(d, 0xf000, i);
+		cpu_read(d, 0x8000, banksize);
+	}
+	cpu_read(d, 0xc000, banksize);
+}
+
+/*
+After Burner CRC32 list
+0x88f202f0 Program ROM
+0x10935d10 Charcter ROM #0
+0x0bc56f7a Charcter ROM #1
+0xa75cb06d Charcter ROM #0+#1
+0xf2ce3641 total
+*/
+function ppu_dump(d, pagesize, banksize)
+{
+	//dump uses 0x0000-0x1fff
+/*	for(local i = 0; i < pagesize; i += 4){
+		cpu_write(d, 0x8000, i);
+		cpu_write(d, 0x9000, i | 1);
+		cpu_write(d, 0xa000, i | 2);
+		cpu_write(d, 0xb000, i | 3);
+		ppu_read(d, 0, banksize * 4);
+	}
+	//dump uses 0x2000-0x27ff*/
+/*	cpu_write(d, 0xe000, 0x10);
+	for(local i = 0; i < pagesize*2; i += 2){
+		cpu_write(d, 0xc000, i);
+		cpu_write(d, 0xd000, i | 1);
+		ppu_read(d, 0x2000, banksize);
+	}*/
+	//dump uses 0x2000-0x23ff*/
+	cpu_write(d, 0xe000, 0x13);
+	for(local i = 0; i < pagesize*2; i += 1){
+		cpu_write(d, 0xd000, i);
+		ppu_read(d, 0x2000, 0x400);
+	}
+}
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0xf000, 0x10);
+	cpu_ramrw(d, 0x6000, banksize);
+	cpu_write(d, 0xf000, 0);
+}

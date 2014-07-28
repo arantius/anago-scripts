@@ -1,0 +1,44 @@
+/*
+Namcot 118/119 chip with Charcter ROM A16 wired PPU A12
+
+Quinty
+*/
+board <- {
+	mappernum = 88, vram_mirrorfind = true, ppu_ramfind = false,
+	cpu_rom = {
+		size_base = 0x10000, size_max = 1*mega,
+		banksize = 0x2000
+	},
+	cpu_ram = {
+		size_base = 0, size_max = 0, banksize = 0
+	}
+	ppu_rom = {
+		size_base = 0x20000, size_max = 0x20000,
+		banksize = 0x0400
+	}
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize - 2; i += 2){
+		cpu_write(d, 0x8000, [6, i, 7, i+1]);
+		cpu_read(d, 0x8000, banksize * 2);
+	}
+	cpu_read(d, 0xc000, banksize * 2);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	local i;
+	//ROM offset 0x00000-0x0ffff can access from PPU address 0x0000-0x0fff
+	for(i = 0; i < (pagesize >> 1); i += 4){
+		cpu_write(d, 0x8000, [0, i, 1, i+2]);
+		ppu_read(d, 0x0000, banksize * 4);
+	}
+	
+	//ROM offset 0x10000-0x1ffff can access from PPU address 0x1000-0x1fff
+	for(; i < pagesize; i += 4){
+		cpu_write(d, 0x8000, [2, i, 3, i+1, 4, i+2, 5, i+3]);
+		ppu_read(d, 0x1000, banksize * 4);
+	}
+}

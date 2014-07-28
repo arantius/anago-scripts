@@ -1,0 +1,61 @@
+/*
+Karaoke Studio by Bandai
+*/
+board <- {
+	mappernum = 188, vram_mirrorfind = false, ppu_ramfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 4 * mega,
+		banksize = 0x4000
+	}, 
+	cpu_ram = {
+		size_base = 0x400, size_max = 0x400,
+		banksize = 0x400
+	}, 
+	ppu_rom = {
+		size_base = 0, size_max = 0,
+		banksize = 0x2000
+	}
+};
+
+function dump_mainrom(d, banksize)
+{
+	for(local i = 0; i < 8 - 1; i += 1){
+		local dd = i + 0x10;
+		cpu_write(d, 0xf000 + dd, dd);
+		cpu_read(d, 0x8000, banksize);
+	}
+	cpu_read(d, 0xc000, banksize);
+}
+/*
+page map
+0x00 to 0x0f: subcartridge ROM
+0x10 to 0x17: main PCB ROM data (mirror)
+0x18 to 0x1f: main PCB ROM data
+*/
+function cpu_dump(d, pagesize, banksize)
+{
+	if(pagesize == 8){
+		dump_mainrom(d, banksize);
+	}else{
+/*
+結合型 nes file は先頭から順に main ROM, sub ROM を配置する。
+write register の順番から見ると変。
+*/
+		dump_mainrom(d, banksize);
+		for(local i = 0; i < (pagesize / 2); i += 1){
+			cpu_write(d, 0xc000 + i, i);
+			cpu_read(d, 0x8000, banksize);
+		}
+	}
+}
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0xc008, [0x08,0x09]);
+	cpu_ramrw(d, 0xf000, 1);
+	cpu_ramrw(d, 0x8000, 1);
+	cpu_write(d, 0xc04a, [0x4a,0x4b]);
+	cpu_ramrw(d, 0x8000, 1);
+	cpu_ramrw(d, 0x6000, banksize - 3);
+}
+

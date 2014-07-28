@@ -1,0 +1,32 @@
+/*
+BANDAI FCG-1, FCG-2
+FCG-1 + Program ROM + Charcter ROM
+	ドラゴンボール 大魔王復活
+	西村京太郎ミステリー ブルートレイン殺人事件 (Irem)
+FCG-2 + Program ROM + Charcter ROM
+	ファミコンジャンプ
+	魁!!男塾
+	名門！第三野球部
+	ドラゴンボール3
+	悪魔くん
+*/
+board <- {
+	mappernum = 16, 
+	cpu_rom = {
+		size_base = 2 * mega, size_max = 2 * mega,
+		banksize = 0x4000
+	}, 
+	cpu_ram = {
+		size_base = 0x0000, size_max = 0x0000,
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 2 * mega, size_max = 2 * mega,
+		banksize = 0x0400
+	},
+	ppu_ramfind = false,
+	vram_mirrorfind = false
+};
+
+const register_offset = 0x6000;
+dofile("fcg3.ai");

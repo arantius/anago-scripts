@@ -1,0 +1,131 @@
+board <- {
+	mappernum = 68, ppu_ramfind = false, vram_mirrorfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x4000
+	},
+	cpu_ram = {
+		size_base = 0x2000, size_max = 0x2000, banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x0800
+	}
+};
+
+/*
+SUNSOFT-4 manages, banksize:0x4000, pagesize:0x10
+[Nantetatte Baseball]
+page 0 to 7:
+uses subcartridge + SUNSOFT-6 controller
+page 8 to F:
+main PCB ROM data, data size is 0x20000
+
+[other games] 
+ROM size is 0x20000, page 0 to 7 and page 8 to f are same data (mirrored).
+*/
+function cpu_dump(d, pagesize, banksize)
+{
+	local i;
+	if(pagesize == 8){
+		i = 8;
+		pagesize += 8;
+	}else{
+		i = 0;
+	}
+	//page 0 to 7 uses via Nanntettate! Baseball Subcartridge
+	for(; i < 8; i += 1){
+		cpu_write(d, 0xf000, i); //set page and enable SUNSOFT-6 (disable Workram)
+		cpu_write(d, 0x6000, 0); //active ROM
+		cpu_read(d, 0x8000, banksize);
+	}
+	//page 8 to 0xe uses normal ROM
+	for(; i < pagesize - 1; i += 1){
+		cpu_write(d, 0xf000, i);
+		cpu_read(d, 0x8000, banksize);
+	}
+	cpu_read(d, 0xc000, banksize);
+}
+
+/*
+SUNSOFT-4 can map Charcter ROM to nametable area.
+
+Charcter data (0x0000 to 0x1fff) banksize is 0x0800
+Nametable data (0x2000 to 0x2fff) banksize is 0x0400
+
+Charcter data
+A[17:11] = reg[6:0]
+A[10:0] = PPU A[10:0]
+
+Nametable data
+A[17] = 1
+A[16:10] = reg[6:0]
+A[9:0] = PPU A[9:0]
+
+After Burner CRC32 list
+0x88f202f0 Program ROM
+0x10935d10 Charcter ROM #0
+0x0bc56f7a Charcter ROM #1
+0xa75cb06d Charcter ROM #0+#1
+0xf2ce3641 total
+*/
+function ppu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize; i += 4){
+		cpu_write(d, 0x8000, i);
+		cpu_write(d, 0x9000, i | 1);
+		cpu_write(d, 0xa000, i | 2);
+		cpu_write(d, 0xb000, i | 3);
+		ppu_read(d, 0, banksize * 4);
+	}
+}
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0xf000, 0x10); //enable Workram, disable SUNSOFT-6
+	cpu_ramrw(d, 0x6000, banksize);
+	cpu_write(d, 0xf000, 0);
+}
+
+/*
+SUNSOFT-4 has single switchable CPU bank. flash memory program address bit can uses A10:0 type.
+[CPU]
+$8000-$ffff -> programming area
+
+[PPU]
+0x0000-0x07ff -> 0x02800-0x02fff, uses 0x2aaa
+0x0800-0x0fff -> 0x05000-0x05800, uses 0x5555
+0x1000-0x17ff -> ID area (reserved)
+0x1800-0x1fff -> programming area
+*/
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_command(d, 0x0000, 0x8000, cpu_banksize);
+	cpu_command(d, 0x2aaa, 0x8000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, cpu_banksize);
+	cpu_write(d, 0xf000, 0); //disable Workram
+
+	ppu_command(d, 0x2aaa, 0x0000, ppu_banksize);
+	cpu_write(d, 0x8000, 0x05);
+	ppu_command(d, 0x5555, 0x0800, ppu_banksize);
+	cpu_write(d, 0x9000, 0x0a);
+	ppu_command(d, 0x0000, 0x1000, ppu_banksize);
+	cpu_write(d, 0xa000, 0);
+}
+
+function cpu_transfer(d, start, end, banksize)
+{
+	for(local i = start; i < end - 1; i += 1){
+		cpu_write(d, 0xf000, i);
+		cpu_program(d, 0x8000, banksize);
+	}
+	cpu_program(d, 0xc000, banksize)
+}
+
+function ppu_transfer(d, start, end, banksize)
+{
+	for(local i = start; i < end; i += 1){
+		cpu_write(d, 0xb000, i);
+		ppu_program(d, 0x1800, banksize);
+	}
+}

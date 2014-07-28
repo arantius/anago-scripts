@@ -1,0 +1,88 @@
+/*
+IREM G-101 based cartridge
+
+$8000-$9fff bank#0, switchable or last - 1
+$a000-$bfff bank#1, switchable
+$c000-$dfff bank#2, last - 1 or switchable
+$e000-$ffff 
+note:
+Major League PCB maybe ignore write operation to $9000-$9fff
+$9000-$9fff write register are fixed to bank #2 = last -1
+*/
+
+board <- {
+	mappernum = 32,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 1 * mega,
+		banksize = 0x0400
+	},
+	ppu_ramfind = false,
+	vram_mirrorfind = false
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	if(false){
+		cpu_write(d, 0x9000, 0);
+		for(local i = 0; i < pagesize - 2; i += 2){
+			cpu_write(d, 0x8000, i);
+			cpu_write(d, 0xa000, i | 1);
+			cpu_read(d, 0x8000, banksize * 2);
+		}
+		cpu_read(d, 0xc000, banksize);
+		cpu_read(d, 0xe000, banksize);
+	}else{
+		cpu_write(d, 0x9000, 2);
+		for(local i = 0; i < pagesize - 2; i += 2){
+			cpu_write(d, 0x8000, i);
+			cpu_write(d, 0xa000, i | 1);
+			cpu_read(d, 0xc000, banksize);
+			cpu_read(d, 0xa000, banksize);
+		}
+		cpu_read(d, 0x8000, banksize);
+		cpu_read(d, 0xe000, banksize);
+	}
+}
+function ppu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize ; i += 8){
+		for(local j = 0; j < 8; j += 1){
+			cpu_write(d, 0xb000 + j, i + j);
+		}
+		ppu_read(d, 0, banksize * 8);
+	}
+}
+
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_write(d, 0x9000, 0);
+	cpu_write(d, 0x8000, 0);
+	cpu_command(d, 0, 0x8000, cpu_banksize);
+	cpu_command(d, 0x02aa, 0xc000, cpu_banksize);
+	cpu_command(d, 0x0555, 0xc000, cpu_banksize);
+	cpu_write(d, 0xb000, [0xa, 0x15, 0]);
+	cpu_command(d, 0x2aaa, 0x0000, ppu_banksize);
+	cpu_command(d, 0x5555, 0x0400, ppu_banksize);
+	cpu_command(d, 0, 0x0800, ppu_banksize);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	for(local i = start; i < end - 1; i += 1){
+		cpu_write(d, 0x8000, i);
+		cpu_program(d, 0x8000, cpu_banksize);
+	}
+	cpu_program(d, 0xc000, cpu_banksize);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	for(local i = start; i < end; i +=4){
+		cpu_write(d, 0xb004, [i, i+1, i+2, i+3]);
+		ppu_program(d, 0x1000, ppu_banksize * 4);
+	}
+}
