@@ -1,0 +1,25 @@
+board <- {
+    mappernum = 130, //Need to convert to UNIF format with BMC-Ghostbusters63in1
+    cpu_romsize = 0x180000, cpu_banksize = 0x8000,
+    ppu_romsize = 0, ppu_banksize = 0x2000,
+    ppu_ramfind = false, vram_mirrorfind = false
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+    // ROM Chip. Only 0, 2 and 3 are used
+    for(local chip = 0; chip < 4; chip += 1){
+        if (chip != 1) {
+            // High bit for ROM chip select
+            cpu_write(d, 0x8001, chip >> 1);
+
+            // Bank. 512/32 = 16 banks per chip
+            for(local i = 0; i < 16; i += 1){
+                // Low bit for ROM chip select + bank select.
+                cpu_write(d, 0x8000, ((chip & 1) << 7) + (i << 1));
+                cpu_read(d, 0x8000, banksize/2);  //Read 32KB bank from $8000-FFFF
+                cpu_read(d, 0xC000, banksize/2);  //Read 32KB bank from $8000-FFFF
+            }
+        }
+    }
+}
