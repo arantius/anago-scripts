@@ -5,6 +5,12 @@ http://tuxnes.sourceforge.net/mappers-0.80.txt
 
 board <- {
   mappernum = 66,
+  cpu_rom = {
+    size_base = 0x10000, size_max = 2 * mega, banksize = 0x8000
+  },
+  ppu_rom = {
+    size_base = 0x4000, size_max = 0x8000, banksize = 0x2000
+  },
   cpu_romsize = 2 * mega, cpu_banksize = 0x8000,
   ppu_romsize = 2 * mega, ppu_banksize = 0x2000,
   ppu_ramfind = false, vram_mirrorfind = true
