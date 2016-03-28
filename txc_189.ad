@@ -1,0 +1,41 @@
+/*
+Written by Joe from http://forums.nesdev.com/
+*/
+
+board <- {
+   mappernum = 189,
+   cpu_rom = {
+      size_base = 0x80000, size_max = 0x80000,
+      banksize = 0x8000
+   },
+   ppu_rom = {
+      size_base = 0x40000, size_max = 0x40000,
+      banksize = 0x400
+   },
+   ppu_ramfind = false, vram_mirrorfind = false
+};
+
+
+function cpu_dump(d, pagesize, banksize)
+{
+   for(local i = 0; i < pagesize; i++){
+      cpu_write(d, 0x4120, i | (i << 4));
+	  cpu_read(d, 0x8000, 0x4000);
+      cpu_read(d, 0xc000, 0x4000);
+   }
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+   for(local i = 0; i < pagesize; i+=4){
+      cpu_write(d, 0x8000, 2);
+      cpu_write(d, 0x8001, i);
+      cpu_write(d, 0x8000, 3);
+      cpu_write(d, 0x8001, i | 1);
+      cpu_write(d, 0x8000, 4);
+      cpu_write(d, 0x8001, i | 2);
+      cpu_write(d, 0x8000, 5);
+      cpu_write(d, 0x8001, i | 3);
+      ppu_read(d, 0x1000, banksize * 4);
+   }
+}
