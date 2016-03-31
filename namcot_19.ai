@@ -12,13 +12,15 @@ I have never seen labeled IC with '106'.
 */
 function cpu_dump(d, pagesize, banksize)
 {
-	for(local i = 0; i < pagesize - 2; i += 2){
+	for(local i = 0; i < pagesize - 1 ; i += 1){
 		cpu_write(d, 0xe000, i);
-		cpu_write(d, 0xe800, i | 1);
-		cpu_read(d, 0x8000, banksize * 2);
+		cpu_read(d, 0x8000, banksize);
 	}
-	cpu_write(d, 0xf000, 0x3e);
-	cpu_read(d, 0xc000, banksize * 2);
+/*
+note: databus conficts on $c800-$dfff. ($c800-$dfff & $7fff) are internal RAM port....
+Unfortunately kazzo generates incomple read wave form. do not use $c800-$dfff.
+*/
+	cpu_read(d, 0xe000, banksize);
 }
 
 function ppu_dump(d, pagesize, banksize)

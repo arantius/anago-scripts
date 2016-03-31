@@ -1,0 +1,106 @@
+board <- {
+	mappernum = 1, vram_mirrorfind = false, ppu_ramfind = true,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x4000, 
+	}, 
+	cpu_ram = {
+		size_base = 0x2000, size_max = 0x2000,
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 1 * mega,
+		banksize = 0x1000, 
+	}
+};
+
+dofile("mmc1.ai");
+
+function cpu_dump(d, pagesize, banksize)
+{
+	cpu_write(d, 0x8000, 0x80); //serial count reset
+	mmc1_write(d, 0x8000, 0x0c); //CPU/PPU bank configuration
+	for(local i = 0; i < pagesize - 1; i += 1){
+		mmc1_write(d, 0xe000, i | 0x10);
+		cpu_read(d, 0x8000, banksize);
+	}
+	cpu_read(d, 0xc000, banksize);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize; i += 2){
+		mmc1_write(d, 0xa000, i);
+		mmc1_write(d, 0xc000, i | 1);
+		ppu_read(d, 0, banksize * 2);
+	}
+}
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	mmc1_write(d, 0x8000, 1 << 3);
+	mmc1_write(d, 0xe000, 0);
+	mmc1_write(d, 0xa000, 0);
+	cpu_ramrw(d, 0x6000, banksize);
+	mmc1_write(d, 0xe000, 0xff);
+}
+
+/*
+MMC1 ROM 2M + (ROM 1M or RAM) board
+CPU memory bank for SLROM, SKROM, SGROM, SNROM
+cpu address|rom address    |page|task
+$8000-$bfff|n * 0x4000|even 0x00|write 0x2aaa + write area
+$c000-$ffff|0x3c000-0x3ffff|fix |write 0x5555
+---------------------------------
+$8000-$bfff|0x00000-0x03fff|fix |write 0x2aaa
+$c000-$ffff|n * 0x4000|odd  0x01|write 0x5555 + write area
+
+PPU memory bank for SLROM, SKROM
+ppu area use command only mask A0-A10 device
+ppu address|rom address    |page|task
+$0000-$0fff|0x00000 * n    |n   |write area + 0x2aa + 0x555
+$0000-$1fff|0x01000 * n    |n+1 |write area
+*/
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_write(d, 0x8000, 0x80);
+	mmc1_write(d, 0xa000, 0x10); //SNROM + MMC1A disable W-RAM
+	mmc1_write(d, 0x8000, 0x1c);
+	mmc1_write(d, 0xe000, 0x10); //MMC1B disable W-RAM
+	cpu_command(d, 0x0000, 0x8000, cpu_banksize);
+	cpu_command(d, 0x2aaa, 0x8000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, cpu_banksize);
+
+	ppu_command(d, 0x0000, 0, ppu_banksize);
+	ppu_command(d, 0x02aa, 0, ppu_banksize);
+	ppu_command(d, 0x0555, 0, ppu_banksize);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	local i = 0;
+	local wram = 1 << 4; //W-RAM disable flag
+	for(i = start; i < end - 2; i += 2){
+		mmc1_write(d, 0x8000, 0x1c);
+		mmc1_write(d, 0xe000, i | 0 | wram);
+		cpu_program(d, 0x8000, cpu_banksize);
+		
+		mmc1_write(d, 0x8000, 0x18);
+		mmc1_write(d, 0xe000, i | 1 | wram);
+		cpu_program(d, 0xc000, cpu_banksize);
+	}
+	mmc1_write(d, 0x8000, 0x1c);
+	mmc1_write(d, 0xe000, i | wram);
+	cpu_program(d, 0x8000, cpu_banksize);
+	cpu_program(d, 0xc000, cpu_banksize);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	for(local i = start; i < end; i+=2){
+		mmc1_write(d, 0xa000, i)
+		mmc1_write(d, 0xc000, i | 1);
+		ppu_program(d, 0x0000, ppu_banksize * 2);
+	}
+}
+

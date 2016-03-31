@@ -29,4 +29,4 @@ board <- {
 };
 
 const register_offset = 0x6000;
-dofile("fcg3.ai");
+dofile("lz93d50.ai");

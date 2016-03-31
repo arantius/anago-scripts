@@ -1,0 +1,53 @@
+board <- {
+	mappernum = 3,
+	cpu_rom = {
+		size_base = 0x8000, size_max = 0x8000
+		banksize = 0x8000
+	},
+	ppu_rom= {
+		size_base = 0x8000, size_max = 0x8000,
+		banksize = 0x2000
+	},
+	ppu_ramfind = false, vram_mirrorfind = true
+};
+function cpu_dump(d, pagesize, banksize)
+{
+	cpu_read(d, 0x8000, 0x4000);
+	cpu_read(d, 0xc000, 0x4000);
+}
+function ppu_dump(d, pagesize, banksize)
+{
+	local security = 0; //0,1,2,3 or don't care
+	security = security << 4;
+	for(local i = 0; i < pagesize; i++){
+		cpu_write(d, 0x8000, security | i);
+		ppu_read(d, 0, banksize);
+	}
+}
+
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_write(d, 0x8000, 0x30);
+	cpu_command(d, 0, 0x8000, cpu_banksize);
+	cpu_command(d, 0x02aa, 0xc000, cpu_banksize);
+	cpu_command(d, 0x0555, 0xc000, cpu_banksize);
+	ppu_command(d, 0, 0x0000, ppu_banksize);
+	ppu_command(d, 0x02aa, 0x0000, ppu_banksize);
+	ppu_command(d, 0x0555, 0x0000, ppu_banksize);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	if(cpu_banksize == 0x8000){
+		cpu_program(d, 0x8000, 0x4000);
+	}
+	cpu_program(d, 0xc000, 0x4000);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	for(local i = start; i < end; i++){
+		cpu_write(d, 0x8000, 0xf0 | i);
+		ppu_program(d, 0x0000, ppu_banksize);
+	}
+}

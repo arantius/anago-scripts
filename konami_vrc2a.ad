@@ -1,0 +1,52 @@
+/*
+VRCII A0,A1 swap + charcter ROM address bus shiftx1
+051744 jumper G?
+VRC-CPU|databus 
+A0 - A1|A0: xxxx210x
+A1 - A0|A1: xxxx6543
+VRC-CHRCTER ROM
+A11-A17 = A10-A16
+*/
+board <- {
+	mappernum = 22, vram_mirrorfind = false, ppu_ramfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 1 * mega, 
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 1 * mega, 
+		banksize = 0x2000 / 8
+	}
+};
+dofile("vrc4.ai");
+function cpu_dump(d, pagesize, banksize)
+{
+	vrc4_cpu_dump(d, pagesize, banksize, 1, 0);
+}
+
+
+function vrc2a_ppubank_set(d, addr, i, j, r0, r1)
+{
+	local a1 = 1 << r0;
+	local a2 = 1 << r1;
+	local a3 = a1|a2;
+
+	cpu_write(d, addr | a1, i >> 3);
+	cpu_write(d, addr, i << 1);
+	cpu_write(d, addr | a3, j >> 3);
+	cpu_write(d, addr | a2, j << 1);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	local r0 = 1;
+	local r1 = 0;
+
+	for(local i = 0; i < pagesize; i += 8){
+		vrc2a_ppubank_set(d, 0xb000, i | 0, i | 1, r0, r1);
+		vrc2a_ppubank_set(d, 0xc000, i | 2, i | 3, r0, r1);
+		vrc2a_ppubank_set(d, 0xd000, i | 4, i | 5, r0, r1);
+		vrc2a_ppubank_set(d, 0xe000, i | 6, i | 7, r0, r1);
+		ppu_read(d, 0x0000, banksize * 8);
+	}
+}

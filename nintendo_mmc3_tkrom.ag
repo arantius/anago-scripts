@@ -1,0 +1,120 @@
+board <- {
+	mappernum = 4, vram_mirrorfind = false, ppu_ramfind = true,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 4 * mega,
+		banksize = 0x2000,
+	}, 
+	cpu_ram = {
+		size_base = 0x2000, size_max = 0x2000,
+		banksize = 0x2000,
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x0400
+	}
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	cpu_write(d, 0xa001, 0); //disable W-RAM
+	for(local i = 0; i < pagesize - 2; i += 2){
+		cpu_write(d, 0x8000, 6);
+		cpu_write(d, 0x8001, i);
+		cpu_write(d, 0x8000, 7);
+		cpu_write(d, 0x8001, i | 1);
+		cpu_read(d, 0x8000, banksize * 2);
+	}
+	cpu_read(d, 0xc000, banksize * 2);
+}
+function ppu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize; i+=4){
+		cpu_write(d, 0x8000, 2);
+		cpu_write(d, 0x8001, i);
+		cpu_write(d, 0x8000, 3);
+		cpu_write(d, 0x8001, i | 1);
+		cpu_write(d, 0x8000, 4);
+		cpu_write(d, 0x8001, i | 2);
+		cpu_write(d, 0x8000, 5);
+		cpu_write(d, 0x8001, i | 3);
+		ppu_read(d, 0x1000, banksize * 4);
+	}
+}
+
+/*
+http://nesdevwiki.org/wiki/MMC3
+ PRG RAM protect ($A001-$BFFF, odd)
+7  bit  0
+---- ----
+RWxx xxxx
+||
+|+-------- Write protection (0: allow writes; 1: deny writes)
++--------- Chip enable (0: disable chip; 1: enable chip)
+*/
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0xa001, 0x80);
+	cpu_ramrw(d, 0x6000, banksize);
+	cpu_write(d, 0xa001, 0x40);
+}
+
+/*
+CPU memory bank for T*ROM
+cpu address|rom address    |page|task
+$8000-$9fff|0x02000-0x03fff|1   |write 0x2aaa
+$a000-$bfff|n * 0x2000     |n   |write area
+$c000-$ffff|0x7c000-0x7ffff|fix |write 0x5555, boot area
+
+PPU memory bank for TLROM TKROM TKSROM
+ppu address|rom address    |page|task
+$0000-$07ff|0x02800-0x02fff|0x0a|write 0x2aaa
+$0800-$0fff|0x05000-0x057ff|0x14|write 0x5555
+$1000-$1fff|n * 0x1000     |n   |write area
+*/
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_write(d, 0xa001, 0); //disable W-RAM
+
+	cpu_command(d, 0x0000, 0xa000, cpu_banksize);
+	cpu_command(d, 0x2aaa, 0x8000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, 0x4000);
+	cpu_write(d, 0x8000, 7);
+	cpu_write(d, 0x8001, 0);
+	cpu_write(d, 0x8000, 6);
+	cpu_write(d, 0x8001, 1);
+
+	ppu_command(d, 0x0000, 0x1000, ppu_banksize);
+	ppu_command(d, 0x2aaa, 0x0000, 0x0800);
+	ppu_command(d, 0x5555, 0x0800, 0x0800);
+	cpu_write(d, 0x8000, 2);
+	cpu_write(d, 0x8001, 0);
+	cpu_write(d, 0x8000, 0);
+	cpu_write(d, 0x8001, 0x0a);
+	cpu_write(d, 0x8000, 1);
+	cpu_write(d, 0x8001, 0x14);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	for(local i = start; i < end - 2; i += 1){
+		cpu_write(d, 0x8000, 7);
+		cpu_write(d, 0x8001, i);
+		cpu_program(d, 0xa000, cpu_banksize);
+	}
+	cpu_program(d, 0xc000, cpu_banksize * 2)
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	for(local i = start; i < end; i += 4){
+		cpu_write(d, 0x8000, 2);
+		cpu_write(d, 0x8001, i);
+		cpu_write(d, 0x8000, 3);
+		cpu_write(d, 0x8001, i | 1);
+		cpu_write(d, 0x8000, 4);
+		cpu_write(d, 0x8001, i | 2);
+		cpu_write(d, 0x8000, 5);
+		cpu_write(d, 0x8001, i | 3);
+		ppu_program(d, 0x1000, ppu_banksize * 4);
+	}
+}

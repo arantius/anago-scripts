@@ -1,0 +1,22 @@
+board <- {
+	mappernum = 25,
+	cpu_rom = {
+		size_base = 2 * mega, size_max = 2 * mega,
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 2 * mega, size_max = 2 * mega,
+		banksize = 0x2000 / 8
+	},
+	ppu_ramfind = false, vram_mirrorfind = false
+};
+dofile("vrc4.ai");
+function cpu_dump(d, pagesize, banksize)
+{
+	vrc4_cpu_dump(d, pagesize, banksize, 3, 2);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	vrc4_ppu_dump(d, pagesize, banksize, 3, 2);
+}

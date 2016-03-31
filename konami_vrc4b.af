@@ -1,0 +1,45 @@
+board <- {
+	mappernum = 25, ppu_ramfind = false, vram_mirrorfind = false
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x2000
+	},
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x2000 / 8
+	}
+};
+dofile("vrc4.ai");
+function cpu_dump(d, pagesize, banksize)
+{
+	vrc4_cpu_dump(d, pagesize, banksize, 1, 0);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	vrc4_ppu_dump(d, pagesize, banksize, 1, 0);
+}
+
+/*
+VRC4b FLASH MEMORY WRITE
+generic CPU memory bank
+cpu address|rom address    |page|task
+$8000-$9fff|0x02000-0x03fff|1   |write 0x2aaa
+$a000-$bfff|n * 0x2000     |n   |write area
+$c000-$dfff|末尾-1         |fix |write 0x5555
+$e000-$efff|末尾           |fix |boot area, 未使用
+PPU memory bank
+ppu address|rom address    |page|task
+$0000-$04ff|0x02800-0x027ff|0x0a|write (0x2aaa & 0x03ff) + 0
+$0400-$07ff|0x05400-0x057ff|0x15|write (0x5555 & 0x03ff) + 0x400
+$1000-$1fff|n * 0x1000     |n   |write area
+*/
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	vrc4_program_initialize(d, cpu_banksize, ppu_banksize, 1, 0)
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	vrc4_ppu_transfer(d, start, end, ppu_banksize, 1, 0);
+}

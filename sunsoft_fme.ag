@@ -1,0 +1,157 @@
+board <- {
+	mappernum = 69, vram_mirrorfind = false, ppu_ramfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x2000
+	}, cpu_ram = {
+		size_base = 0x2000, size_max = 0x2000, 
+		banksize = 0x2000
+	}, ppu_rom = {
+		size_base = 1 * mega, size_max = 2 *mega,
+		banksize = 0x0400
+	}
+};
+
+/*
+SUNSOFT-5A, SUNSOFT-5B, FME-7
+[CPU writemap]
+$6000-$7fff 7:0 RAM data (if RAM is enabled)
+$8000-$9fff 3:0 memory register address
+$a000-$bfff 7:0 memory register data
+$c000-$dfff 3:0 audio register address (SUNSOFT-5B only)
+$e000-$ffff 7:0 audio register data (SUNSOFT-5B only)
+
+[CPU readmap]
+$6000-$7fff 7:0 Program ROM bank #0 or RAM
+$8000-$9fff 7:0 Program ROM bank #1
+$a000-$bfff 7:0 Program ROM bank #2
+$c000-$dfff 7:0 Program ROM bank #3
+$e000-$ffff 7:0 Program ROM bank #4 (fixed to bottom page)
+
+[PPU readmap] (PPU write map is undefined)
+0x0000-0x03ff Charcter ROM bank #0|0x1000-0x13ff Charcter ROM bank #4
+0x0400-0x07ff Charcter ROM bank #1|0x1400-0x17ff Charcter ROM bank #5
+0x0800-0x0bff Charcter ROM bank #2|0x1800-0x1bff Charcter ROM bank #6
+0x0c00-0x0fff Charcter ROM bank #3|0x1c00-0x1fff Charcter ROM bank #7
+
+[FME-7 memory register]
+adr bit assignments
+-------------------------
+0-7 7:0 Charcter ROM bank #0 to #7
+8   7   RAM enable bit 0:disable 1:enable
+    6   memory select on $6000-$7fff 0:ROM 1:RAM
+    4:0 CPU ROM page for bank #0
+9-b 4:0 CPU ROM page for bank #1 to #3
+c   1:0 PPU area VRAM control
+d   7   φ2 counter decrement 0:disable 1:enable
+    0   φ2 counter overflow IRQ 0:disable 1:enable
+e   7:0 φ2 counter value bit7:0
+f   7:0 φ2 counter value bit15:8
+
+address 8, bit7:6 behave on FME-7
+00 enabled ROM
+01 disabled ROM and RAM
+10 disabled ROM and RAM
+11 enabled RAM
+
+audio register
+(not analyzed yet)
+
+*/
+function sunsoft5_write(d, register_address, data)
+{
+	cpu_write(d, 0x8000, register_address);
+	cpu_write(d, 0xa000, data);
+}
+
+function cpu_dump(d, pagesize, banksize)
+{
+	local regaddress = 9
+	local cpuaddress = 0x8000
+/*
+	//*debug* dump ROM data via $6000-$7fff
+	regaddress = 8
+	cpuaddress = 0x6000
+*/
+	for(local i = 0; i < pagesize - 1; i++){
+		sunsoft5_write(d, regaddress, i);
+		cpu_read(d, cpuaddress, banksize);
+	}
+	cpu_read(d, 0xe000, banksize);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	local mul = 8;
+	for(local i = 0; i < pagesize; i+= mul){
+		for(local j = 0; j < mul; j++){
+			sunsoft5_write(d, j, i + j);
+		}
+		ppu_read(d, 0, banksize * mul);
+	}
+}
+
+function cpu_ram_access(d, pagesize, banksize)
+{
+	sunsoft5_write(d, 8, 0xc0);
+	cpu_ramrw(d, 0x6000, banksize);
+	cpu_write(d, 0xa000, 0x00);
+}
+
+/*
+CPU memory bank
+cpu address|rom address    |page|task
+$8000-$9fff|0x02000-0x03fff|1   |write 0x2aaa
+$a000-$bfff|0x04000-0x05fff|2   |write 0x5555
+$c000-$dfff|n * 0x2000     |n   |programming area
+$e000-$ffff|0x3c000-0x3ffff|fix |program last page
+
+PPU memory bank
+ppu address  |rom address    |page|task
+0x0000-0x0fff|n * 0x1000     |n   |programming area
+0x1000-0x13ff|0x02800-0x02fff|0x0a|write 0x2aaa
+0x1400-0x17ff|0x05000-0x057ff|0x15|write 0x5555
+0x1800-0x1fff|未使用
+*/
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	sunsoft5_write(d, 8, 1 << 6); //disable W-RAM
+
+	cpu_command(d, 0x2aaa, 0xa000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, cpu_banksize);
+	sunsoft5_write(d, 0xa,1);
+	sunsoft5_write(d, 0xb,2);
+
+	ppu_command(d, 0x2aaa, 0x1000, ppu_banksize);
+	ppu_command(d, 0x5555, 0x1400, ppu_banksize);
+	ppu_command(d, 0x0000, 0x1800, ppu_banksize);
+	//なぜかよくわからないが電源投入直後の erase に失敗する (2度は必ず成功する)
+/*	for(local j = 0; j < 0x80; j++){
+		sunsoft5_write(d, j & 0x07, j);
+	}*/
+	sunsoft5_write(d, 4, 0x0a);
+	sunsoft5_write(d, 5, 0x15);
+	sunsoft5_write(d, 6, 0);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	for(local i = start; i < end - 1; i += 1){
+		sunsoft5_write(d, 9, i);
+		cpu_program(d, 0x8000, cpu_banksize);
+	}
+	//$6000-$7fff への不正アクセスを避けるため $e000-$ffff は使用しない
+	sunsoft5_write(d, 9, 0xff & 0x1f);
+	cpu_program(d, 0x8000, cpu_banksize);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	local mul = 4
+	for(local i = start; i < end; i += mul){
+		for(local j = 0; j < mul; j++){
+			sunsoft5_write(d, j, i + j);
+		}
+		ppu_program(d, 0x0000, ppu_banksize * mul);
+	}
+}

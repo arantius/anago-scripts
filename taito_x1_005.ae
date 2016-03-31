@@ -1,0 +1,57 @@
+/*
+Taito X1-005
+TFC-FM-5900 不動明王伝のみ Program ROM size は 2M
+
+Minelvaton Saga
+$7f00-$7f7f save RAM area
+$7f80-$7fff save RAM area, mirror
+*/
+board <- {
+	mappernum = 80, ppu_ramfind = false, vram_mirrorfind = false,
+	cpu_rom = {
+		size_base = 1 * mega, size_max = 2 * mega,
+		banksize = 0x2000
+	},
+	cpu_ram = {
+		size_base = 0x100 * 0x20, size_max = 0x100 * 0x20,
+		banksize = 0x2000
+	}
+	ppu_rom = {
+		size_base = 1 * mega, size_max = 1 * mega,
+		banksize = 0x2000 / 8 //0x0800*2 + 0x0400 * 4
+	}
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	local i;
+	for(i = 0; i < pagesize - 2; i += 2){
+		cpu_write(d, 0x7efa, i);
+		cpu_write(d, 0x7efc, i | 1);
+		cpu_read(d, 0x8000, banksize * 2);
+	}
+	cpu_write(d, 0x7efe, i);
+	cpu_read(d, 0xc000, banksize * 2);
+}
+
+function ppu_dump(d, pagesize, banksize)
+{
+	for(local i = 0; i < pagesize; i += 8){
+		local ar = [i, i|2, i|4, i|5, i|6, i|7];
+		cpu_write(d, 0x7ef0, ar);
+		ppu_read(d, 0x0000, banksize * 8);
+	}
+}
+
+/*
+0x2000 byte のデータの offset 0x1f00-0x1f7f のみ有効
+*/
+function cpu_ram_access(d, pagesize, banksize)
+{
+	cpu_write(d, 0x7ef8, 0xa3);
+	for(local i = 0; i < 0x1f80; i += 0x80){
+		cpu_ramrw(d, 0x7f00, 0x0080);
+	}
+	cpu_ramrw(d, 0x6000, 0x0080); //offset 0x1f80-0x1fff を捨てる
+	cpu_write(d, 0x7ef8, 0x00);
+}
