@@ -1,0 +1,38 @@
+// 512k BNROM by rainwarrior from https://forums.nesdev.com/viewtopic.php?f=9&t=13643
+board <- {
+  mappernum = 34,
+  vram_mirrorfind = true,
+  ppu_ramfind = false,
+  cpu_rom = {
+    size_base = 0x400000, /* 512 kilobits */
+    size_max = 0x400000, /* 512 kilobits */
+    banksize = 0x4000, /* 16 kilobytes */
+  },
+  cpu_ram = {
+    size_base = 0,
+    size_max = 0x8000, /* 8 kilobytes */
+    bank_size = 0x1000,
+  },
+  ppu_rom = {
+    size_base = 0,
+    size_max = 0x8000, /* 8 kilobytes */
+    banksize = 0x1000,
+  }
+};
+
+function cpu_dump(d, banks, bank_size)
+{
+  for (local i=0; i < (banks/2); i++) {
+    cpu_write(d, 0x8000, i);
+    cpu_read(d, 0x8000, bank_size);
+    cpu_read(d, 0xC000, bank_size);
+  }
+}
+
+function ppu_dump(d, banks, bank_size)
+{
+  for (local i=0; i < banks; ++i)
+  {
+    ppu_read(d, 0x0000, bank_size);
+  }
+}
