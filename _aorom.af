@@ -1,0 +1,19 @@
+ // Mapper 7 / AOROM from https://forums.nesdev.com/viewtopic.php?f=9&t=14744
+ board <- {
+   mappernum = 7,
+   cpu_rom = {
+      size_base = 2 * mega, size_max = 4 * mega, banksize = 0x8000
+   }, 
+   ppu_rom = {
+      size_base = 0, size_max = 0, banksize = 0
+   },
+   ppu_ramfind = false, vram_mirrorfind = true
+};
+
+function cpu_dump(d, pagesize, banksize) {
+  for (local i = 0; i < pagesize; i += 1) {
+    cpu_write(d, 0x8000, i);
+    cpu_read(d, 0x8000, 0x4000);
+    cpu_read(d, 0xc000, 0x4000);
+  }
+}
