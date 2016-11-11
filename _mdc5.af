@@ -1,0 +1,53 @@
+// From http://bakutendo.blog87.fc2.com/blog-entry-224.html
+/*
+MDC5書き込みスクリプト
+
+SRAM 初期化
+ST + SEL を押しながら電源を入れて SEL を押す
+
+disk side change
+下記の入力があったら disk を交換したとする
+SEL + A,A,A: change side A
+SEL + B,B,B: change side B
+SEL + ST,ST,ST: swap disk 前編/後編
+
+*/
+board <- {
+  mappernum = 5, 
+  cpu_rom = {
+    size_base = 2 * mega, size_max = 8 * mega,
+    banksize = 0x2000
+  },
+  cpu_ram = {
+    size_base = 0x2000, size_max = 0x8000,
+    banksize = 0x2000
+  },
+  ppu_rom = {
+    size_base = 2 * mega, size_max = 8 * mega,
+    banksize = 0x0800
+  },
+  ppu_ramfind = true, vram_mirrorfind = false
+};
+
+function program_initalize(d, cpu_banksize, ppu_banksize) {
+  cpu_command(d, 0x0000, 0x8000, cpu_banksize);
+  cpu_command(d, 0x2aaa, 0xa000, cpu_banksize);
+  cpu_command(d, 0x5555, 0xc000, 0x4000);
+  cpu_write(d, 0x5100, 3);
+  cpu_write(d, 0x5113, 0);
+  cpu_write(d, 0x5114, 0x80);
+  cpu_write(d, 0x5115, 0x81);
+  cpu_write(d, 0x5116, 0x82);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize) {
+  for(local i = start; i < end - 1; i += 1){
+    cpu_write(d, 0x5114, 0x80 | i);
+    cpu_program(d, 0x8000, cpu_banksize);
+  }
+  //$e000- は書き込みが安定しないので末尾 page として $7f を指定する。
+  cpu_write(d, 0x5114, 0x80 | 0x7f);
+  cpu_program(d, 0x8000, cpu_banksize);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize) {}

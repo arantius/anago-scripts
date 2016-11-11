@@ -1,0 +1,48 @@
+// From http://bakutendo.blog87.fc2.com/blog-entry-210.html
+// Bandai#16用吸い出しスクリプト
+/*
+Bandai#16(#159?)
+
+LZ93D50+24C01(1Kbit EEPROM) #159?
+LZ93D50+24C02(2Kbit EEPROM) #16 ?
+
+FCG-2|FCG-1|LZ93D50 カセットのチップによって記述変更？
+6000h|7FF0h|8000h Select 1K VROM at PPU 0000h-03FFh
+6001h|7FF1h|8001h Select 1K VROM at PPU 0400h-07FFh
+6002h|7FF2h|8002h Select 1K VROM at PPU 0800h-0BFFh
+6003h|7FF3h|8003h Select 1K VROM at PPU 0C00h-0FFFh
+6004h|7FF4h|8004h Select 1K VROM at PPU 1000h-13FFh
+6005h|7FF5h|8005h Select 1K VROM at PPU 1400h-17FFh
+6006h|7FF6h|8006h Select 1K VROM at PPU 1800h-1BFFh
+6007h|7FF7h|8007h Select 1K VROM at PPU 1C00h-1FFFh
+6008h|7FF8h|8008h Select 16K ROM at 8000h-BFFFh (initially 1st bank)
+N/A Fixed 16K ROM at C000h-FFFFh (always last bank)
+*/
+board <- {
+  mappernum = 16,
+  cpu_romsize = 2 * mega, cpu_banksize = 0x4000,
+  ppu_romsize = 2 * mega, ppu_banksize = 0x0400,
+  ppu_ramfind = true, vram_mirrorfind = false
+};
+
+function cpu_dump(d, pagesize, banksize) {
+  for(local i = 0; i < pagesize - 1; i +=1){
+    cpu_write(d, 0x8008, i);
+    cpu_read(d, 0x8000, banksize);
+  }
+  cpu_read(d, 0xc000, banksize);
+}
+
+function ppu_dump(d, pagesize, banksize){
+  for(local i = 0; i < pagesize; i+=8){
+    cpu_write(d, 0x8000, i);
+    cpu_write(d, 0x8001, i | 1);
+    cpu_write(d, 0x8002, i | 2);
+    cpu_write(d, 0x8003, i | 3);
+    cpu_write(d, 0x8004, i | 4);
+    cpu_write(d, 0x8005, i | 5);
+    cpu_write(d, 0x8006, i | 6);
+    cpu_write(d, 0x8007, i | 7);
+    ppu_read(d, 0x0000, banksize * 8);
+  }
+}

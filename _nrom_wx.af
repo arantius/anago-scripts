@@ -1,0 +1,44 @@
+// From http://bakutendo.blog87.fc2.com/blog-entry-202.html
+board <- {
+	mappernum = 0, ppu_ramfind = false, vram_mirrorfind = true,
+	cpu_rom = {
+		size_base = 0x8000, size_max = 0x8000,
+		banksize = 0x4000
+	},
+	ppu_rom = {
+		size_base = 0x2000, size_max = 0x2000,
+		banksize = 0x2000
+	}
+};
+
+function cpu_dump(d, pagesize, banksize)
+{
+	cpu_read(d, 0x8000, 0x4000);
+	cpu_read(d, 0xc000, 0x4000);
+}
+function ppu_dump(d, pagesize, banksize)
+{
+	ppu_read(d, 0, banksize);
+}
+
+function program_initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_command(d, 0, 0x8000, cpu_banksize);
+	cpu_command(d, 0x02aa, 0xc000, cpu_banksize);
+	cpu_command(d, 0x0555, 0xc000, cpu_banksize);
+
+	ppu_command(d, 0x0000, 0, 0x0000);
+	ppu_command(d, 0x02aa, 0, 0x1000);
+	ppu_command(d, 0x0555, 0, 0x1000);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	cpu_program(d, 0x8000, cpu_banksize);
+	cpu_program(d, 0xc000, cpu_banksize);
+}
+
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	ppu_program(d, 0x0000, ppu_banksize);
+}
