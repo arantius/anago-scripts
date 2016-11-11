@@ -1,0 +1,69 @@
+// From http://bakutendo.blog87.fc2.com/blog-entry-210.html
+// Bandai#16用吸い出しスクリプト
+/*
+Bandai#16 FLASH MEMORY WRITE
+
+LZ93D50+24C01(1Kbit EEPROM) #159?
+LZ93D50+24C02(2Kbit EEPROM) #16 ?
+
+FCG-2|FCG-1|LZ93D50 作成したカセットのチップによって変更？
+6000h|7FF0h|8000h Select 1K VROM at PPU 0000h-03FFh
+6001h|7FF1h|8001h Select 1K VROM at PPU 0400h-07FFh
+6002h|7FF2h|8002h Select 1K VROM at PPU 0800h-0BFFh
+6003h|7FF3h|8003h Select 1K VROM at PPU 0C00h-0FFFh
+6004h|7FF4h|8004h Select 1K VROM at PPU 1000h-13FFh
+6005h|7FF5h|8005h Select 1K VROM at PPU 1400h-17FFh
+6006h|7FF6h|8006h Select 1K VROM at PPU 1800h-1BFFh
+6007h|7FF7h|8007h Select 1K VROM at PPU 1C00h-1FFFh
+6008h|7FF8h|8008h Select 16K ROM at 8000h-BFFFh (initially 1st bank)
+N/A Fixed 16K ROM at C000h-FFFFh (always last bank)
+
+CPU Memmory Bank
+cpu address|rom address |page|task
+$8000-$bfff|0x04000*n |n |write area
+$c000-$ffff|末尾 |fix |boot area & write 0x02aa or 0x0555
+
+PPU Memmory Bank
+ppu address|rom address |page|task
+$0000-$03ff|0x02800-0x02bff|0x0a|write 0x02aaa
+$0400-$07ff|0x05400-0x057ff|0x15|write 0x05555
+$0800-$0bff|未使用 | |
+$0c00-$03ff|未使用 | |
+$1000-$1FFF|0x1000*n |n |write area
+*/
+board <- {
+  mappernum = 16, vram_mirrorfind = false,
+  cpu = {banksize = 0x4000, maxsize = 2 * mega},
+  ppu = {banksize = 0x0400, maxsize = 2 * mega},
+};
+
+function initalize(d, cpu_banksize, ppu_banksize){
+  cpu_command(d, 0x02aa, 0xc000, cpu_banksize);
+  cpu_command(d, 0x0555, 0xc000, cpu_banksize);
+
+  ppu_command(d, 0x2aaa, 0, ppu_banksize);
+  ppu_command(d, 0x5555, 0x0400, ppu_banksize);
+
+  cpu_write(d, 0x8000, 0x0a);
+  cpu_write(d, 0x8001, 0x15);
+}
+
+function cpu_transfer(d, start, end, cpu_banksize){
+  for(local i = start; i < end; i += 1){
+    cpu_write(d, 0x8008, i);
+    cpu_program(d, 0x8000, cpu_banksize);
+  }
+  /*
+  cpu_program(d, 0xc000, cpu_banksize);
+  */
+}
+
+function ppu_transfer(d, start, end, ppu_banksize){
+  for(local i = start; i < end; i += 4){
+    cpu_write(d, 0x8004, i);
+    cpu_write(d, 0x8005, i | 1);
+    cpu_write(d, 0x8006, i | 2);
+    cpu_write(d, 0x8007, i | 3);
+    ppu_program(d, 0x1000, ppu_banksize * 4);
+  }
+}

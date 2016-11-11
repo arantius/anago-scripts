@@ -1,0 +1,60 @@
+// From http://bakutendo.blog87.fc2.com/blog-entry-189.html
+// とtc0690（マッパ３３）
+/*
+TAITO#33 TC0190/TC0350/TC0690 FLASH MEMORY WRITE
+PRGROM:4M[MAX] CHRROM:4M[MAX]?
+
+TC0690
+ キャプテンセイバー
+ ジェットソン
+ バブルボブル２
+
+TC0350
+ ドンドコドン２
+
+CPU Memmory Bank
+ cpu address|rom address    |page|task
+ $8000-$9fff|0x02000-0x03fff|1   |write 0x2aaa
+ $a000-$bfff|0x02000*n      |n   |write area
+ $c000-$ffff|末尾           |fix |boot area & write 0x5555
+
+PPU Memmory Bank
+ ppu address|rom address    |page|task
+ $0000-$0fff|0x1000*n       |n   |write area
+ $1000-$13ff|0x02800-0x02bff|0x0a|write 0x2aaa
+ $1400-$17ff|0x05400-0x057ff|0x15|write 0x5555
+ $1800-$1bff|未使用         |    |
+ $1c00-$1FFF|未使用         |    |
+*/
+board <- {
+	mappernum = 33,  vram_mirrorfind = false,
+	cpu = {banksize = 0x2000, maxsize = 2 * mega},
+	ppu = {banksize = 0x0800, maxsize = 2 * mega},
+};
+function initalize(d, cpu_banksize, ppu_banksize)
+{
+	cpu_command(d, 0x2aaa, 0x8000, cpu_banksize);
+	cpu_command(d, 0x5555, 0xc000, cpu_banksize);
+	cpu_write(d, 0x8000, 1);
+
+	ppu_command(d, 0x2aaa, 0x1000, ppu_banksize);
+	ppu_command(d, 0x5555, 0x1400, ppu_banksize);
+	cpu_write(d, 0xa000, 0x0a);
+	cpu_write(d, 0xa001, 0x15);
+}
+function cpu_transfer(d, start, end, cpu_banksize)
+{
+	for(local i = start; i < end - 2; i += 1){
+		cpu_write(d, 0x8001, i);
+		cpu_program(d, 0xa000, cpu_banksize);
+	}
+	cpu_program(d, 0xc000, cpu_banksize * 2);
+}
+function ppu_transfer(d, start, end, ppu_banksize)
+{
+	for(local i = start; i < end; i += 2){
+		cpu_write(d, 0x8002, i);
+		cpu_write(d, 0x8003, i | 1);
+		ppu_program(d, 0x0000, ppu_banksize * 2);
+	}
+}
