@@ -1,0 +1,14 @@
+//send 1bit serial 5 times
+function mmc1_write(d, address, data)
+{
+	local ar = [];
+	for(local i = 0; i < 5; i++){
+		ar.append(data);
+		data = data >> 1;
+	}
+	cpu_write(d, address, ar);
+
+/*	for(local i = 0; i < 5; i++){
+		cpu_write(d, address, data >> i);
+	}*/
+}
