@@ -5,7 +5,7 @@ Extensions for Anago scripts are :
 * **.ad** : for dumping scripts (that contain functions : **cpu_dump()** and **ppu_dump()** (without **cpu_ram_access()**))
 * **.ae** : for dumping scripts (that contain function : **cpu_ram_access()**)
 * **.af** : for flashing scripts (that contain functions : **cpu_transfer()** and **ppu_transfer()**)
-* **.ag** : for both dumping and flashing scripts (that contain functions : **cpu_dump()**, **ppu_dump()**, **cpu_transfer()**, **ppu_transfer()**...)
+* **.ag** : for both dumping and flashing scripts (that contain functions : **cpu_dump()**, **ppu_dump()**, **cpu_transfer()** and **ppu_transfer()**)
 * **.ai** : for include scripts (that are called by other scripts with the **dofile()** function)
 
 Related links:
