@@ -1,0 +1,18 @@
+/*
+https://forums.nesdev.org/viewtopic.php?p=286434#p286434
+*/
+
+board <- {
+	mappernum = 30,
+	cpu_rom = { size_base = 1 * mega, size_max = 4 * mega, banksize = 0x4000 }, 
+	ppu_rom = {	size_base = 0, size_max = 0, banksize = 0x2000 },
+	vram_mirrorfind = true, ppu_ramfind = false
+};
+
+function cpu_dump(d, pagesize, banksize) {
+	for(local i = 0; i < pagesize - 1; i += 1) {
+		cpu_write(d, 0xc000+i, i);
+		cpu_read(d, 0x8000, banksize);
+	}
+	cpu_read(d, 0xc000, banksize);
+}

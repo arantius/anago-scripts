@@ -1,0 +1,50 @@
+/*
+https://forums.nesdev.org/viewtopic.php?p=304290#p304290
+
+Kaiser KS7016 bootleg port of Exciting Basket (FDS)
+https://forums.nesdev.org/viewtopic.php?p=301298
+
+IMPORTANT : Fix header to use 8KB CHR-RAM after dumping:
+https://www.nesdev.org/wiki/NES_2.0_Mapper_306
+*/
+
+board <- {
+	mappernum = 306,
+	cpu_rom = { banksize = 0x2000, size_max = 0x20000, size_base = 1 * mega },
+	cpu_ram = { banksize = 0x2000, size_max = 0x2000, size_base = 0x2000 },
+	ppu_rom = {	banksize = 0x2000, size_max = 0, size_base = 0 },
+	vram_mirrorfind = true, ppu_ramfind = true
+};
+
+/** PRG-ROM bankswitching (from wiki)
+	Mask: $D903 (according to FCEUX)
+
+	A~FEDC BA98 7654 3210
+	  -------------------
+	  11.1 1..1 .Mpp PP11
+			     ||| ++-- Bits 0-1 of 8 KiB PRG-ROM bank number at CPU $6000-$7FFF
+			     |++----- Bits 2-3 of 8 KiB PRG-ROM bank number at CPU $6000-$7FFF if M=1
+			     +------- 0=Ignore pp, switchable bank number is 10PP
+			              1=Obey pp, switchable bank number is ppPP
+**/
+
+function set_prg_bank(d, bank) {
+	local val = 0x43 | (bank << 2); // Set M and low 2 bits to 1, then insert bank number
+	cpu_write(d, 0xd900 | val, val); // Write to correct address (value is irrelevant)
+}
+
+function cpu_dump(d, pagesize, banksize) {
+	// 8000-FFFF: 32KB fixed bank (-4)
+	cpu_read(d, 0x8000, banksize * 4);
+}
+
+// try dumping this cart as SRAM...
+function program_initalize(d, cpu_banksize, ppu_banksize) {
+	set_prg_bank(d, 0) // just in case
+}
+
+function cpu_ram_access(d, pagesize, banksize) {
+	local bank = 0; // change this
+	set_prg_bank(d, bank)
+	cpu_ramrw(d, 0x6000, banksize * 1); // Read 8KB bank from $6000-7FFF
+}
