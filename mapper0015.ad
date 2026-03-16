@@ -1,3 +1,11 @@
+/*
+https://forums.nesdev.org/viewtopic.php?p=299736#p299736
+
+This script works correctly only if the RESET signal of the cartridge is deactivated.
+To do that : the ceramic capacitor present on the PCB needs to be shunted (with a wire between its 2 pins) during the dumping process.
+Otherwise, the same datas will be repeated in the dump file.
+*/
+
 board <- {
   mappernum = 15,
   cpu_rom = { size_base = 0x100000, size_max = 0x100000, banksize = 0x8000 },
